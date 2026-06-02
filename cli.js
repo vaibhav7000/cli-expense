@@ -25,6 +25,7 @@ const rl = createInterface({
     crlfDelay: Infinity
 })
 
+let didExpensesFileWrittenOnce = false;
 let readCurrentExpenseFile = fs.readFileSync(join('finances.json'), 'utf-8');
 let curretExpenseState = JSON.parse(readCurrentExpenseFile); // checks to be added later, bydefault considering to be array
 
@@ -62,11 +63,13 @@ program
             if(answer === 'y') {
                 // already maintains the current state using currentExpenseState, maintain this state and write to the file
                 console.log("Wait for saving the finance in the logs");
-                const newFinance = new Expense(title, validNumber, own);
+                const currentDate = new Date();
+                const newFinance = new Expense(title, validNumber, own, currentDate);
                 curretExpenseState.push(newFinance);
                 fs.writeFileSync(join('finances.json'), JSON.stringify(curretExpenseState));
                 console.log("Finance added");
-                
+
+                didExpensesFileWrittenOnce = true;
                 // ask for adding the new expense using the rl.prompt
                 const message = await askQuestionWrapper('Do you want to add new Expense? (y/n)\n');
 
@@ -106,7 +109,7 @@ program
                 console.log(`${'='.repeat(10)}`)
                 
                 curretExpenseState.forEach((element, index) => {
-                    render[index, element]
+                    render(index, element)
                 })
 
                 console.log(`${'='.repeat(10)}`)
@@ -149,6 +152,104 @@ program
         console.log(`${'='.repeat(10)}`)
     })
 
+/**
+ * either delete with date, title (ask to delete to all)
+ */
+program
+    .command("delete")
+    .option('-d, --date <YYYY-MM-DD>', "Date that represents expenses to be deleted")
+    .option('-t, --title <title', 'Enter Title for expenses to be deleted')
+    .option('-a, --all [alltodelete]', 'Either delete all or latest one')
+    .action(options => {
+        const {date, title, all} = options;
+        if(!date && !title && all) {
+            // delete all the elements i.e expenses = []
+            curretExpenseState = [];
+            fs.writeFileSync(join(process.cwd(), 'finances.json'), JSON.stringify(curretExpenseState));
+            console.log('successfully deleted')
+            return
+        }
+
+        const dateToSearch = new Date(date);
+        let newResposne;
+
+        if(title && date && all) {
+            newResposne = curretExpenseState.filter(element => {
+                const expenseDate = new Date(element.date);
+                const flag = expenseDate.getDate() === dateToSearch.getDate() && expenseDate.getMonth() === dateToSearch.getMonth() && expenseDate.getFullYear() === dateToSearch.getFullYear();
+
+                if(flag && element.title.toLowerCase() === title.toLowerCase()) {
+                    return false;
+                }
+            })
+
+            curretExpenseState = [...newResposne];
+            console.log('successfully deleted')
+        } else if(date) {
+            if(all) {
+                newResposne = curretExpenseState.filter(element => {
+                    const expenseDate = new Date(element.date);
+
+                    const flag = expenseDate.getDate() === dateToSearch.getDate() && expenseDate.getMonth() === dateToSearch.getMonth() && expenseDate.getFullYear() === dateToSearch.getFullYear();
+                    if(flag) {
+                        return false;
+                    }
+                })
+                curretExpenseState = [...newResposne];
+                console.log('successfully deleted')
+            } else {
+                // latest to find i.e present at the bottom
+                let finalIndex = -1;
+
+                for(let index = curretExpenseState.length - 1; index >= 0; index--) {
+                    const expenseDate = new Date(curretExpenseState[index].date);
+                    const flag = expenseDate.getDate() === dateToSearch.getDate() && expenseDate.getMonth() === dateToSearch.getMonth() && expenseDate.getFullYear() === dateToSearch.getFullYear();
+                    if(flag) {
+                        finalIndex = index
+                        break;
+                    }
+                }
+
+                if(finalIndex >= 0) {
+                    curretExpenseState.splice(finalIndex, 1);
+                    console.log('successfully deleted')
+                } else {
+                    console.log(`no element found to be deleted for data ${dateToSearch}`);
+                }
+            }
+        } else if(title) {
+            if(all) {
+                newResposne = curretExpenseState.filter(element => {
+                    if(element.title.toLowerCase() === title.toLowerCase()) {
+                        return false;
+                    }
+                })
+
+                curretExpenseState = [...newResposne];
+                console.log('successfully deleted')
+            } else {
+                // latest to find i.e present at the bottom
+                let finalIndex = -1;
+
+                for(let index = curretExpenseState.length - 1; index >= 0; index--) {
+                    if(curretExpenseState[index].title.toLowerCase() === title.toLowerCase()) {
+                        finalIndex = index
+                        break;
+                    }
+                }
+
+                if(finalIndex >= 0) {
+                    curretExpenseState.splice(finalIndex, 1);
+                    console.log('successfully deleted')
+                } else {
+                    console.log(`no element found to be deleted for data ${dateToSearch}`);
+                }
+            }
+            console.log(curretExpenseState)
+        }
+
+        didExpensesFileWrittenOnce = true;
+    })
 
 rl.on('line', input => {
     // check input contains subCommands
@@ -163,7 +264,12 @@ rl.on('line', input => {
         }
     )
 })
+
 rl.on('SIGINT', () => {
+    // save the response in finances.json
+    if(didExpensesFileWrittenOnce) {
+        fs.writeFileSync(join(process.cwd(), 'finances.json'), JSON.stringify(curretExpenseState));
+    }
     console.log('Closing the application');
     rl.close();
 })
@@ -173,6 +279,11 @@ rl.on('close', () => {
     process.exit(1);
 })
 
+
+/**
+ * 
+ * I am thinking of that to write the file when there is signal to close the application, => maintains performant
+ */
 
 /**
  * Helper method below
@@ -187,11 +298,13 @@ function askQuestionWrapper(question) {
 }
 
 function render(index, element) {
+    const elementSpendDate = new Date(element.date);
     console.log('-')
     console.log(`${index + 1}.`)
     console.log(`Title: ${element.title}`)
     console.log(`Title: ${element.value}`)
     console.log(`Spend on yourself: ${element.isOwn ? 'Yes' : 'No'}`)
+    console.log(`Date: ${elementSpendDate.getDate()}-${elementSpendDate.getMonth() + 1}-${elementSpendDate.getFullYear()}`)
     console.log('-')
 }
 
