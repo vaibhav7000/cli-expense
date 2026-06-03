@@ -6,6 +6,7 @@ import { join } from "path";
 
 
 import { Expense } from "./class/Expense.js";
+import { contentToHTMLFormat } from "./utils/conversion.js";
 
 /**
  * base command: finance
@@ -249,6 +250,21 @@ program
         }
 
         didExpensesFileWrittenOnce = true;
+    })
+
+program
+    .command('export')
+    .option('-f, --format <fileformat>', 'Format file to export', 'html')
+    .action(options => {
+        const { format } = options;
+
+        if(format === 'html') {
+            console.log('Saving file on Desktop');
+            contentToHTMLFormat(curretExpenseState);
+            console.log('Successfully html file on Desktop');
+        } else {
+            // perform for pdf
+        }
     })
 
 rl.on('line', input => {
