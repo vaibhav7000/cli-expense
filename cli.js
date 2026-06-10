@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+#!/usr/bin/env node 
+// above line is called shebang
 import { Command } from "commander";
 import { createInterface } from "readline";
 import fs from "fs";
@@ -264,7 +265,39 @@ program
             console.log('Successfully html file on Desktop');
         } else {
             // perform for pdf
+            /**
+                By default nodejs does not provide any engine / tool that can convert html to pdf, 
+                the engine suppose to convert html tags, css classes font, layout, images etc into the pdf document format.
+                but browsers have that capabilities ( provide us the engine ) that converts html to pdf, either we can, most of npm packages uses browser / chrome under the hood, that internally creates new process
+                
+                1. use directly a package that creates the a child process of browser that converts html to pdf
+                2. Directly creating child process of the browser. if using this we have to go through CDP (chrome devtools protocols)
+
+                Node.js provides:
+                    V8 JavaScript engine
+                    File system APIs
+                    Networking APIs
+                    Streams
+                    Crypto
+
+                It does not include:
+                    Blink (Chromium rendering engine)
+                    WebKit
+                    Gecko
+
+                These capabilites exist in the browser natively
+
+                => To implement the feature of html to pdf conversion, either use engines of browsers, or build you own engine
+
+
+                We will be using chrome as the rendering engine, we have to spawn a chrome process
+             */
         }
+
+        rl.write(null, {
+            ctrl: true,
+            name: 'c'
+        })
     })
 
 rl.on('line', input => {
